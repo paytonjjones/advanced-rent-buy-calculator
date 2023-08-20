@@ -1,0 +1,49 @@
+{
+    "basic": {
+        "monthly_rent": 2850,
+        "initial_home_price": 875000,
+        "interest_rate": 6.5,
+        "downpayment_percent": 20,
+        "term": 30
+    },
+    "forecast": {
+        "forecast_length": 30,
+        "use_historical_data": false,
+        "annualized_return": 10
+    },
+    "income": {
+        "starting_liquid_net_worth": 850000,
+        "annual_income": 250000,
+        "annual_other_expenses": 60000
+    },
+    "advanced_home": {
+        "closing": 5,
+        "monthly_hoa_fees": 300,
+        "pmi": 0.8,
+        "homeowners_insurance": 0.45,
+        "repairs_as_percentage_of_home": true,
+        "repairs_percentage": 0.45,
+        "repairs_fixed": 1500
+    },
+    "advanced_rent": {
+        "security_deposit": 1
+    },
+    "advanced_annual_increases": {
+        "inflation": 2.5,
+        "rent_appreciation": 3,
+        "home_appreciation": 3,
+        "annual_income_increase": 2,
+        "lifestyle_inflation": 1
+    },
+    "advanced_taxes": {
+        "property_tax_rate": 1.25,
+        "cap_gains": 9.3,
+        "state_tax_rate": 2.4,
+        "retirement_deductions": 15,
+        "other_itemized_deductions": 0,
+        "filing_status": "Married Filing Jointly"
+    },
+    "advanced_fire": {
+        "withdrawal_rate": 3.2
+    }
+}
