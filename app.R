@@ -10,10 +10,29 @@ require(RColorBrewer)
 require(scales)
 require(tidyr)
 require(rjson)
+require(rclipboard)
+
 
 # ---- data ----
 
 defaults <- fromJSON(file = "defaults.json")
+
+numeric_mask <- c()
+boolean_mask <- c()
+character_mask <- c()
+
+for (section_ix in 1:length(defaults)) {
+  numeric_mask <-
+    c(numeric_mask, sapply(defaults[[section_ix]], is.numeric))
+  boolean_mask <-
+    c(boolean_mask, sapply(defaults[[section_ix]], is.logical))
+  character_mask <-
+    c(character_mask, sapply(defaults[[section_ix]], is.character))
+}
+
+numeric_vars <- numeric_mask[numeric_mask] %>% names
+boolean_vars <- boolean_mask[boolean_mask] %>% names
+character_vars <- character_mask[character_mask] %>% names
 
 # ---- header ----
 
@@ -285,7 +304,11 @@ sidebar <- dashboardSidebar(
       ),
       menuItem(
         text = "Advanced - FIRE",
-        checkboxInput("fire", label = "Show Time to FIRE Plot", value = FALSE),
+        checkboxInput(
+          "fire",
+          label = "Show Time to FIRE Plot",
+          value = defaults$advanced_fire$show_fire_plot
+        ),
         sliderInput(
           "withdrawal_rate",
           label = "FIRE Withdrawal Rate",
@@ -294,8 +317,16 @@ sidebar <- dashboardSidebar(
           value = defaults$advanced_fire$withdrawal_rate,
           step = 0.1
         )
-      ),
-      startExpanded = FALSE
+      )
+    ),
+    rclipboardSetup(),
+    actionButton("generate_url", "Get URL with Selected Values"),
+    box(
+      status = "primary",
+      style = "display: flex; align-items: center; background: #2c3c42;",
+      width = 12,
+      div(id = "copy_button", uiOutput("clip"), style = "font-size: 80px;"),
+      verbatimTextOutput("url_output"),
     )
   )
 )
@@ -323,26 +354,14 @@ server <- function(input, output, session) {
   # from https://stackoverflow.com/questions/32872222/how-do-you-pass-parameters-to-a-shiny-app-via-url
   observe({
     query <- parseQueryString(session$clientData$url_search)
-    numeric_inputs <- c(
-      "monthly_rent",
-      "initial_home_price",
-      "starting_liquid_net_worth",
-      "annual_income",
-      "annual_other_expenses"
-    )
-    checkbox_inputs <-
-      c("use_historical_data",
-        "repairs_as_percentage_of_home",
-        "fire")
-    select_inputs <- c("filing_status")
     for (i in 1:(length(reactiveValuesToList(input)))) {
       nameval = names(reactiveValuesToList(input)[i])
       if (!is.null(query[[nameval]])) {
-        if (nameval %in% numeric_inputs) {
+        if (nameval %in% numeric_vars) {
           updateNumericInput(session, nameval, value = as.numeric(query[[nameval]]))
-        } else if (nameval %in% select_inputs) {
+        } else if (nameval %in% character_vars) {
           updateSelectInput(session, nameval, selected = query[[nameval]])
-        } else if (nameval %in% checkbox_inputs) {
+        } else if (nameval %in% boolean_vars) {
           updateCheckboxInput(session, nameval, value = query[[nameval]])
         } else {
           # As a default, assumes tags are slider inputs
@@ -366,10 +385,12 @@ server <- function(input, output, session) {
         step = 0.05
       )
     } else {
-      numericInput("repairs",
-                   label = "Yearly Repairs ($)",
-                   value = defaults$advanced_home$repairs_fixed,
-                   min = 0)
+      numericInput(
+        "repairs",
+        label = "Yearly Repairs ($)",
+        value = defaults$advanced_home$repairs_fixed,
+        min = 0
+      )
     })
   output$annualized_return_ui <-
     renderUI(if (!input$use_historical_data) {
@@ -397,6 +418,61 @@ server <- function(input, output, session) {
         )
       )
     })
+
+  # URL generator
+  base_url <- reactive({
+    req(session$clientData$url_protocol,
+        session$clientData$url_hostname)
+    port <-
+      if (session$clientData$url_port == 80)
+        ""
+    else
+      paste0(":", session$clientData$url_port)
+    paste0(
+      session$clientData$url_protocol,
+      "://",
+      session$clientData$url_hostname,
+      port,
+      session$clientData$url_pathname
+    )
+  })
+
+  generated_url <- reactive({
+    query <- list()
+
+    for (nameval in names(reactiveValuesToList(input))) {
+      if (nameval %in% numeric_vars) {
+        query[[nameval]] <- input[[nameval]]
+      } else if (nameval %in% character_vars) {
+        query[[nameval]] <- input[[nameval]]
+      } else if (nameval %in% boolean_vars) {
+        query[[nameval]] <- input[[nameval]]
+      }
+    }
+
+    params <-
+      paste0(names(query),
+             sep = "=",
+             URLencode(unlist(query)),
+             collapse = "&")
+    return(paste(base_url(), params, sep = "?"))
+  })
+
+  observeEvent(input$generate_url, {
+    output$url_output <- renderText({
+      generated_url()
+    })
+  })
+
+  # Add clipboard buttons
+  output$clip <- renderUI({
+    rclipButton(
+      inputId = "clipbtn",
+      label = "",
+      clipText = generated_url(),
+      icon = icon("clipboard")
+    )
+  })
 
 
 
@@ -435,7 +511,6 @@ server <- function(input, output, session) {
         total_change <- prod(returns_as_prod)
         annualized_return <-
           total_change ^ (1 / forecast_length)
-        print(annualized_return)
         returns$percent_change <-
           (annualized_return - 1) * 100
       }
