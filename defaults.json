@@ -1,29 +1,29 @@
 {
     "basic": {
-        "monthly_rent": 2850,
-        "initial_home_price": 875000,
-        "interest_rate": 6.5,
+        "monthly_rent": 3900,
+        "initial_home_price": 780000,
+        "interest_rate": 7.5,
         "downpayment_percent": 20,
         "term": 30
     },
     "forecast": {
-        "forecast_length": 30,
+        "forecast_length": 35,
         "use_historical_data": false,
-        "annualized_return": 10
+        "annualized_return": 9
     },
     "income": {
-        "starting_liquid_net_worth": 850000,
-        "annual_income": 250000,
+        "starting_liquid_net_worth": 300000,
+        "annual_income": 140000,
         "annual_other_expenses": 60000
     },
     "advanced_home": {
-        "closing": 5,
-        "monthly_hoa_fees": 300,
+        "closing": 4,
+        "monthly_hoa_fees": 200,
         "pmi": 0.8,
         "homeowners_insurance": 0.45,
         "repairs_as_percentage_of_home": true,
         "repairs_percentage": 0.45,
-        "repairs_fixed": 1500
+        "repairs_fixed": 3000
     },
     "advanced_rent": {
         "security_deposit": 1
@@ -31,12 +31,12 @@
     "advanced_annual_increases": {
         "inflation": 2.5,
         "rent_appreciation": 3,
-        "home_appreciation": 3,
+        "home_appreciation": 4,
         "annual_income_increase": 2,
         "lifestyle_inflation": 1
     },
     "advanced_taxes": {
-        "property_tax_rate": 1.25,
+        "property_tax_rate": 1.35,
         "cap_gains": 9.3,
         "state_tax_rate": 2.4,
         "retirement_deductions": 15,
@@ -44,6 +44,7 @@
         "filing_status": "Married Filing Jointly"
     },
     "advanced_fire": {
+        "show_fire_plot": false,
         "withdrawal_rate": 3.2
     }
 }
