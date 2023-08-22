@@ -17,22 +17,18 @@ require(rclipboard)
 
 defaults <- fromJSON(file = "defaults.json")
 
-numeric_mask <- c()
-boolean_mask <- c()
-character_mask <- c()
-
-for (section_ix in 1:length(defaults)) {
-  numeric_mask <-
-    c(numeric_mask, sapply(defaults[[section_ix]], is.numeric))
-  boolean_mask <-
-    c(boolean_mask, sapply(defaults[[section_ix]], is.logical))
-  character_mask <-
-    c(character_mask, sapply(defaults[[section_ix]], is.character))
+extract_defaults_of_type <- function(defaults, is_type){
+  type_mask <- c()
+  for (section_ix in 1:length(defaults)) {
+    type_mask <-
+      c(type_mask, sapply(defaults[[section_ix]], is_type))
+  }
+  return(type_mask[type_mask] %>% names)
 }
 
-numeric_vars <- numeric_mask[numeric_mask] %>% names
-boolean_vars <- boolean_mask[boolean_mask] %>% names
-character_vars <- character_mask[character_mask] %>% names
+numeric_vars <- extract_defaults_of_type(defaults, is.numeric)
+boolean_vars <- extract_defaults_of_type(defaults, is.logical)
+character_vars <- extract_defaults_of_type(defaults, is.character)
 
 # ---- header ----
 
@@ -252,6 +248,8 @@ sidebar <- dashboardSidebar(
           step = 0.5
         )
       ),
+
+      # Advanced - Taxes
       menuItem(
         text = "Advanced - Taxes",
         sliderInput(
@@ -302,10 +300,12 @@ sidebar <- dashboardSidebar(
           selected = defaults$advanced_taxes$filing_status
         )
       ),
+
+      # Advanced - FIRE
       menuItem(
         text = "Advanced - FIRE",
         checkboxInput(
-          "fire",
+          "show_fire_plot",
           label = "Show Time to FIRE Plot",
           value = defaults$advanced_fire$show_fire_plot
         ),
@@ -335,7 +335,7 @@ sidebar <- dashboardSidebar(
 
 body <- dashboardBody(
   conditionalPanel(
-    "input.fire",
+    "input.show_fire_plot",
     h3("Time to FIRE"),
     plotOutput("firePlot", width = "100%", height = "500px")
   ),
@@ -350,9 +350,9 @@ body <- dashboardBody(
 
 # ---- server ----
 server <- function(input, output, session) {
-  # ---- tag management ----
+  # ---- manage query parameters from URL ----
   # from https://stackoverflow.com/questions/32872222/how-do-you-pass-parameters-to-a-shiny-app-via-url
-  observe({
+  observeEvent(NULL, {
     query <- parseQueryString(session$clientData$url_search)
     for (i in 1:(length(reactiveValuesToList(input)))) {
       nameval = names(reactiveValuesToList(input)[i])
@@ -364,14 +364,11 @@ server <- function(input, output, session) {
         } else if (nameval %in% boolean_vars) {
           updateCheckboxInput(session, nameval, value = query[[nameval]])
         } else {
-          # As a default, assumes tags are slider inputs
-          updateSliderInput(session, nameval, value = as.numeric(query[[nameval]]))
+          sprintf("Unknown variable type: %s", nameval)
         }
       }
-
     }
-
-  })
+  }, ignoreNULL = FALSE)
 
   # ---- input management ----
   output$repairs_ui <-
@@ -423,21 +420,24 @@ server <- function(input, output, session) {
   base_url <- reactive({
     req(session$clientData$url_protocol,
         session$clientData$url_hostname)
-    port <-
-      if (session$clientData$url_port == 80)
-        ""
-    else
-      paste0(":", session$clientData$url_port)
-    paste0(
-      session$clientData$url_protocol,
-      "://",
-      session$clientData$url_hostname,
-      port,
-      session$clientData$url_pathname
+    if (session$clientData$url_port == 80) {
+      port <- ""
+    } else {
+      port <- paste0(":", session$clientData$url_port)
+    }
+    return(
+      paste0(
+        session$clientData$url_protocol,
+        "://",
+        session$clientData$url_hostname,
+        port,
+        session$clientData$url_pathname
+      )
     )
   })
 
   generated_url <- reactive({
+
     query <- list()
 
     for (nameval in names(reactiveValuesToList(input))) {
@@ -971,24 +971,30 @@ server <- function(input, output, session) {
                              "Rent",
                              "Buy"))
 
-    rent_to_fire_years <- fire_plot_data %>%
+    rent_fired <- fire_plot_data %>%
       filter(required_withdrawal_rate <= input_required_withdrawal_rate &
-               choice == "Rent") %>%
-      filter(year == min(year)) %>%
-      select(year)
-    buy_to_fire_years <- fire_plot_data %>%
+               choice == "Rent")
+    buy_fired <- fire_plot_data %>%
       filter(required_withdrawal_rate <= input_required_withdrawal_rate &
-               choice == "Buy") %>%
-      filter(year == min(year)) %>%
-      select(year)
-    if (nrow(buy_to_fire_years) == 0) {
-      buy_to_fire_years <- buy_to_fire_years %>%
-        add_row(year = Inf)
+               choice == "Buy")
+
+    if (nrow(rent_fired) > 0) {
+      rent_to_fire_years <- rent_fired %>%
+        filter(year == min(year)) %>%
+        select(year) %>%
+        as.numeric
+    } else {
+      rent_to_fire_years <- Inf
     }
-    if (nrow(rent_to_fire_years) == 0) {
-      rent_to_fire_years <- rent_to_fire_years %>%
-        add_row(year = Inf)
+    if (nrow(buy_fired) > 0) {
+      buy_to_fire_years <- buy_fired %>%
+        filter(year == min(year)) %>%
+        select(year) %>%
+        as.numeric
+    } else {
+      buy_to_fire_years <- Inf
     }
+
     if (buy_to_fire_years == Inf && rent_to_fire_years == Inf) {
       fire_title <- "You cannot fire within the timeline"
     } else {
