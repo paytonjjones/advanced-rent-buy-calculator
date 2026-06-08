@@ -662,10 +662,7 @@ server <- function(input, output, session) {
         (.01 * homeowners_insurance * current_home_value) / 12
       current_piti <-
         current_mortgage + current_pmi + current_property_tax + current_homeowners_insurance + monthly_hoa_fees
-      percentage_home_ownership <-
-        (initial_home_price - balance_remaining) / initial_home_price
-      current_equity <-
-        current_home_value * percentage_home_ownership
+      current_equity <- current_home_value - balance_remaining
       repair_cost <- if (input$repairs_as_percentage_of_home) {
         req(repairs <= 1) # Upon change to repairs_as_percentage_of_home, wait until repairs value updates from dollar amount
         (repairs / 100) * current_home_value
