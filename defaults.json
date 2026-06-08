@@ -1,8 +1,8 @@
 {
     "basic": {
-        "monthly_rent": 3900,
-        "initial_home_price": 780000,
-        "interest_rate": 7.5,
+        "monthly_rent": 3100,
+        "initial_home_price": 750000,
+        "interest_rate": 6.5,
         "downpayment_percent": 20,
         "term": 30
     },
